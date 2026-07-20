@@ -67,7 +67,7 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <StatusBar style="light" />
-        <ChordPicker key={pickerResetKey} onApply={handleApplyVoicing} />
+        <ChordPicker key={pickerResetKey} onApply={handleApplyVoicing} activeChord={selected} />
 
         <View style={styles.top}>
           <ChordDisplay

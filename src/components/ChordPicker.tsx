@@ -1,22 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NOTE_NAMES } from '../data/chordFormulas';
-import { CHORD_TYPES, ChordTypeOption, ExtensionOption } from '../data/chordTypes';
+import { CHORD_TYPES, ChordTypeOption, ExtensionOption, findTypeAndExtensionForSuffix } from '../data/chordTypes';
+import { ChordMatch } from '../engine/types';
 import { findVoicing, Voicing } from '../engine/voicing';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import Reveal from './Reveal';
 
 interface Props {
   onApply: (voicing: Voicing) => void;
+  /** The chord currently shown on the big text — keeps the chips mirroring reality, whatever changed it. */
+  activeChord?: ChordMatch;
 }
 
 type Section = 'root' | 'type' | 'ext' | null;
 
-export default function ChordPicker({ onApply }: Props) {
+export default function ChordPicker({ onApply, activeChord }: Props) {
   const [root, setRoot] = useState<number | null>(null);
   const [typeKey, setTypeKey] = useState<string | null>(null);
   const [extKey, setExtKey] = useState<string | null>(null);
   const [open, setOpen] = useState<Section>(null);
+  const appliedByThisPicker = useRef(false);
 
   const selectedType = CHORD_TYPES.find((t) => t.key === typeKey) ?? null;
   const selectedExt = selectedType?.extensions.find((e) => e.key === extKey) ?? null;
@@ -25,8 +29,41 @@ export default function ChordPicker({ onApply }: Props) {
   const apply = (r: number, type: ChordTypeOption, ext: ExtensionOption) => {
     const required = [...type.base, ...ext.extra];
     const voicing = findVoicing(r, required, type.optional);
-    if (voicing) onApply(voicing);
+    if (voicing) {
+      appliedByThisPicker.current = true;
+      onApply(voicing);
+    }
   };
+
+  // Whatever chord ends up on screen — picked here, tapped on the
+  // fretboard, or chosen from the alternates dropdown — the chips should
+  // describe it. Skip syncing right after our own apply(): local state
+  // already matches, and re-deriving it from the suffix could bounce back
+  // to a different (but equally valid) type/extension reading.
+  useEffect(() => {
+    if (appliedByThisPicker.current) {
+      appliedByThisPicker.current = false;
+      return;
+    }
+    if (!activeChord) {
+      setRoot(null);
+      setTypeKey(null);
+      setExtKey(null);
+      setOpen(null);
+      return;
+    }
+    setRoot(activeChord.root);
+    const found = findTypeAndExtensionForSuffix(activeChord.suffix);
+    setTypeKey(found?.typeKey ?? null);
+    setExtKey(found?.extKey ?? null);
+    setOpen(null);
+    // `identifyChords` is memoized on the fretboard, and App only replaces
+    // the fretboard array when something actually changes it (a tap or an
+    // apply here) — so this object reference is stable across unrelated
+    // re-renders and changes exactly once per real chord change, including
+    // a redundant re-apply of the same chord (needed to reliably clear the
+    // appliedByThisPicker flag above).
+  }, [activeChord]);
 
   const toggle = (section: Section) => setOpen((cur) => (cur === section ? null : section));
 
@@ -126,19 +163,17 @@ export default function ChordPicker({ onApply }: Props) {
 
       {open === 'ext' && selectedType && (
         <Reveal style={styles.extRow}>
-          {selectedType.extensions
-            .filter((e) => e.key !== 'none')
-            .map((ext) => (
-              <Pressable
-                key={ext.key}
-                onPress={() => handlePickExt(ext)}
-                style={[styles.extChip, ext.key === extKey && styles.extChipActive]}
-              >
-                <Text style={[styles.extChipText, ext.key === extKey && styles.extChipTextActive]}>
-                  {ext.label}
-                </Text>
-              </Pressable>
-            ))}
+          {selectedType.extensions.map((ext) => (
+            <Pressable
+              key={ext.key}
+              onPress={() => handlePickExt(ext)}
+              style={[styles.extChip, ext.key === extKey && styles.extChipActive]}
+            >
+              <Text style={[styles.extChipText, ext.key === extKey && styles.extChipTextActive]}>
+                {ext.label}
+              </Text>
+            </Pressable>
+          ))}
         </Reveal>
       )}
     </View>

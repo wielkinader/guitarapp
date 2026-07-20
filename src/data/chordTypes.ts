@@ -160,3 +160,20 @@ export const CHORD_TYPES: ChordTypeOption[] = [
     ],
   },
 ];
+
+/**
+ * Reverse lookup for keeping the picker in sync with whatever chord is
+ * actually detected (from a manual fretboard edit, an alternates pick, etc).
+ * Returns null for suffixes the picker's vocabulary doesn't cover (e.g. the
+ * altered-dominant suffixes like "7#9" that only the detector produces).
+ */
+export function findTypeAndExtensionForSuffix(
+  suffix: string
+): { typeKey: string; extKey: string } | null {
+  for (const type of CHORD_TYPES) {
+    for (const ext of type.extensions) {
+      if (ext.suffix === suffix) return { typeKey: type.key, extKey: ext.key };
+    }
+  }
+  return null;
+}
