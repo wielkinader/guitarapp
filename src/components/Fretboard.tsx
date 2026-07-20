@@ -17,6 +17,8 @@ interface Props {
   leftHanded: boolean;
   /** Pitch class -> short degree token ("1", "b7", "9"...), from the selected chord match. */
   degreesByPitchClass?: Record<number, string>;
+  /** 0 = board shows open + frets 1-4. N>0 = board shows frets N+1..N+4, no open strings displayed as the nut. */
+  baseFret?: number;
 }
 
 function cycleOpenMute(current: StringState): StringState {
@@ -30,6 +32,7 @@ export default function Fretboard({
   onChangeString,
   leftHanded,
   degreesByPitchClass,
+  baseFret = 0,
 }: Props) {
   const order = leftHanded ? [5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5];
 
@@ -64,7 +67,7 @@ export default function Fretboard({
         })}
       </View>
 
-      <View style={styles.nut} />
+      <View style={baseFret === 0 ? styles.nut : styles.positionMarker} />
 
       <View style={styles.fretArea}>
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -80,39 +83,42 @@ export default function Fretboard({
         </View>
 
         <View style={styles.fretGutter} pointerEvents="none">
-          {[1, 2, 3, 4].map((fret) => (
+          {[1, 2, 3, 4].map((row) => (
             <Text
-              key={fret}
-              style={[styles.fretLabel, { top: `${((fret - 0.5) / FRET_COUNT) * 100}%` }]}
+              key={row}
+              style={[styles.fretLabel, { top: `${((row - 0.5) / FRET_COUNT) * 100}%` }]}
             >
-              {fret}
+              {baseFret + row}
             </Text>
           ))}
         </View>
 
         <View style={[StyleSheet.absoluteFill, styles.fretRows]}>
-          {[1, 2, 3, 4].map((fret) => (
-            <View key={fret} style={styles.fretRow}>
-              {order.map((stringIndex) => {
-                const state = fretboard[stringIndex];
-                const selected = state.type === 'fret' && state.fret === fret;
-                const label = selected
-                  ? degreesByPitchClass?.[(STANDARD_TUNING[stringIndex] + fret) % 12]
-                  : undefined;
-                return (
-                  <Pressable
-                    key={stringIndex}
-                    testID={`fret-${fret}-${stringIndex}`}
-                    style={styles.fretCell}
-                    onPress={() => handleFretPress(stringIndex, fret)}
-                    hitSlop={4}
-                  >
-                    {selected ? <FingerDot label={label} /> : <View style={styles.fretCellHint} />}
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
+          {[1, 2, 3, 4].map((row) => {
+            const actualFret = baseFret + row;
+            return (
+              <View key={row} style={styles.fretRow}>
+                {order.map((stringIndex) => {
+                  const state = fretboard[stringIndex];
+                  const selected = state.type === 'fret' && state.fret === actualFret;
+                  const label = selected
+                    ? degreesByPitchClass?.[(STANDARD_TUNING[stringIndex] + actualFret) % 12]
+                    : undefined;
+                  return (
+                    <Pressable
+                      key={stringIndex}
+                      testID={`fret-${row}-${stringIndex}`}
+                      style={styles.fretCell}
+                      onPress={() => handleFretPress(stringIndex, actualFret)}
+                      hitSlop={4}
+                    >
+                      {selected ? <FingerDot label={label} /> : <View style={styles.fretCellHint} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            );
+          })}
         </View>
       </View>
     </View>
@@ -178,6 +184,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.textPrimary,
     marginHorizontal: 2,
+  },
+  positionMarker: {
+    height: StyleSheet.hairlineWidth * 2,
+    marginHorizontal: 2,
+    backgroundColor: colors.hairline,
   },
   fretArea: {
     aspectRatio: FRET_AREA_ASPECT_RATIO,

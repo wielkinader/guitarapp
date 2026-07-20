@@ -1,22 +1,18 @@
 import { NOTE_NAMES, STANDARD_TUNING } from '../data/chordFormulas';
+import {
+  ELEVENTH,
+  FIFTH,
+  FLAT7,
+  FLAT9,
+  MAJOR3,
+  MAJOR7,
+  MINOR3,
+  NINTH,
+  SHARP11,
+  SHARP5,
+  THIRTEENTH,
+} from './degrees';
 import { ChordMatch, FretboardState } from './types';
-
-// Semitone distance from a candidate root. Every one of the 12 possible
-// pitch classes maps to exactly one of these "slots" — which slot a given
-// semitone distance represents in the final chord symbol depends on what
-// else is present (e.g. semitone 3 is a minor 3rd in a minor chord, but a
-// sharp 9 in a chord that also has a major 3rd).
-const FLAT9 = 1;
-const NINTH = 2;
-const MINOR3 = 3;
-const MAJOR3 = 4;
-const ELEVENTH = 5;
-const SHARP11 = 6;
-const FIFTH = 7;
-const SHARP5 = 8;
-const THIRTEENTH = 9;
-const FLAT7 = 10;
-const MAJOR7 = 11;
 
 type Quality = 'major' | 'minor' | 'sus2' | 'sus4';
 

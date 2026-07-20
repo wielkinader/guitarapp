@@ -4,18 +4,22 @@ import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import BottomBar from './src/components/BottomBar';
 import ChordDisplay from './src/components/ChordDisplay';
+import ChordPicker from './src/components/ChordPicker';
 import Fretboard, { FRET_AREA_ASPECT_RATIO, HEADER_HEIGHT } from './src/components/Fretboard';
 import { identifyChords } from './src/engine/chordEngine';
 import { createEmptyFretboard, FretboardState, StringState } from './src/engine/types';
+import { Voicing } from './src/engine/voicing';
 import { colors, spacing } from './src/theme/theme';
 
 const BOARD_MAX_WIDTH = 460;
 
 export default function App() {
   const [fretboard, setFretboard] = useState<FretboardState>(createEmptyFretboard());
+  const [baseFret, setBaseFret] = useState(0);
   const [leftHanded, setLeftHanded] = useState(false);
   const [boardWidth, setBoardWidth] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [pickerResetKey, setPickerResetKey] = useState(0);
 
   const matches = useMemo(() => identifyChords(fretboard), [fretboard]);
   const hasInput = fretboard.some((s) => s.type !== 'none');
@@ -36,7 +40,16 @@ export default function App() {
     });
   };
 
-  const handleReset = () => setFretboard(createEmptyFretboard());
+  const handleReset = () => {
+    setFretboard(createEmptyFretboard());
+    setBaseFret(0);
+    setPickerResetKey((k) => k + 1);
+  };
+
+  const handleApplyVoicing = (voicing: Voicing) => {
+    setFretboard(voicing.fretboard);
+    setBaseFret(voicing.baseFret);
+  };
 
   const handleMiddleLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -54,6 +67,8 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <StatusBar style="light" />
+        <ChordPicker key={pickerResetKey} onApply={handleApplyVoicing} />
+
         <View style={styles.top}>
           <ChordDisplay
             matches={matches}
@@ -70,6 +85,7 @@ export default function App() {
                 onChangeString={handleChangeString}
                 leftHanded={leftHanded}
                 degreesByPitchClass={selected?.degreesByPitchClass}
+                baseFret={baseFret}
               />
             </View>
           )}
