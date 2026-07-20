@@ -24,3 +24,16 @@ export const EMPTY_STRING_STATE = (): StringState => ({ type: 'none' });
 
 export const createEmptyFretboard = (): FretboardState =>
   Array.from({ length: 6 }, EMPTY_STRING_STATE);
+
+/**
+ * A string the player hasn't touched should ring open by default, the same
+ * way an unmarked string on a chord chart is assumed to sound — the only
+ * way to exclude a string is to explicitly mute it. This only kicks in once
+ * something has actually been placed on the board; an untouched board stays
+ * untouched so the empty-state placeholder still shows.
+ */
+export const getEffectiveFretboard = (fretboard: FretboardState): FretboardState => {
+  const hasInteraction = fretboard.some((s) => s.type !== 'none');
+  if (!hasInteraction) return fretboard;
+  return fretboard.map((s) => (s.type === 'none' ? { type: 'open' } : s));
+};

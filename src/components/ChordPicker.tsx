@@ -136,6 +136,7 @@ export default function ChordPicker({ onApply, activeChord }: Props) {
           {NOTE_NAMES.map((name, i) => (
             <Pressable
               key={name}
+              testID={`picker-root-${i}`}
               onPress={() => handlePickRoot(i)}
               style={[styles.rootCell, root === i && styles.rootCellActive]}
             >
@@ -152,6 +153,7 @@ export default function ChordPicker({ onApply, activeChord }: Props) {
           {CHORD_TYPES.map((type) => (
             <Pressable
               key={type.key}
+              testID={`picker-type-${type.key}`}
               onPress={() => handlePickType(type)}
               style={[styles.listRow, type.key === typeKey && styles.listRowActive]}
             >
@@ -166,6 +168,7 @@ export default function ChordPicker({ onApply, activeChord }: Props) {
           {selectedType.extensions.map((ext) => (
             <Pressable
               key={ext.key}
+              testID={`picker-ext-${ext.key}`}
               onPress={() => handlePickExt(ext)}
               style={[styles.extChip, ext.key === extKey && styles.extChipActive]}
             >

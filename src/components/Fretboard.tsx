@@ -1,15 +1,18 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { STANDARD_TUNING } from '../data/chordFormulas';
 import { FretboardState, StringState } from '../engine/types';
 import { colors, fontFamily, typography } from '../theme/theme';
 import FingerDot from './FingerDot';
 
-const FRET_COUNT = 4;
-export const FRET_AREA_ASPECT_RATIO = 0.56; // width / height of the fret grid alone
+export const FRET_AREA_ASPECT_RATIO = 0.56; // width / height of the visible (4-row) viewport
 export const OPEN_ROW_HEIGHT = 40;
 export const NUT_HEIGHT = 6; // nut height + margin
 export const HEADER_HEIGHT = OPEN_ROW_HEIGHT + NUT_HEIGHT;
+
+const VISIBLE_ROWS = 4;
+const TOTAL_FRETS = 16;
+const GUTTER_WIDTH = 22;
 
 interface Props {
   fretboard: FretboardState;
@@ -17,14 +20,15 @@ interface Props {
   leftHanded: boolean;
   /** Pitch class -> short degree token ("1", "b7", "9"...), from the selected chord match. */
   degreesByPitchClass?: Record<number, string>;
-  /** 0 = board shows open + frets 1-4. N>0 = board shows frets N+1..N+4, no open strings displayed as the nut. */
+  /** Scrolls the neck so frets baseFret+1..baseFret+4 are in view. */
   baseFret?: number;
 }
 
-function cycleOpenMute(current: StringState): StringState {
-  if (current.type === 'none') return { type: 'open' };
-  if (current.type === 'open') return { type: 'muted' };
-  return { type: 'none' };
+function toggleMute(current: StringState): StringState {
+  // An untouched or open string is "not muted" — one tap mutes it. A muted
+  // string reopens. There's no third state to cycle through here; a string
+  // that isn't fretted or muted is assumed to ring open by default.
+  return current.type === 'muted' ? { type: 'open' } : { type: 'muted' };
 }
 
 export default function Fretboard({
@@ -35,9 +39,21 @@ export default function Fretboard({
   baseFret = 0,
 }: Props) {
   const order = leftHanded ? [5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5];
+  const [width, setWidth] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const fretAreaHeight = width / FRET_AREA_ASPECT_RATIO;
+  const rowHeight = fretAreaHeight / VISIBLE_ROWS;
+
+  useEffect(() => {
+    if (rowHeight <= 0) return;
+    scrollRef.current?.scrollTo({ y: baseFret * rowHeight, animated: true });
+  }, [baseFret, rowHeight]);
+
+  const handleLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
   const handleOpenMutePress = (stringIndex: number) => {
-    onChangeString(stringIndex, cycleOpenMute(fretboard[stringIndex]));
+    onChangeString(stringIndex, toggleMute(fretboard[stringIndex]));
   };
 
   const handleFretPress = (stringIndex: number, fret: number) => {
@@ -47,8 +63,9 @@ export default function Fretboard({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={handleLayout}>
       <View style={styles.openRow}>
+        <View style={styles.gutter} />
         {order.map((stringIndex) => {
           const state = fretboard[stringIndex];
           const label =
@@ -67,60 +84,41 @@ export default function Fretboard({
         })}
       </View>
 
-      <View style={baseFret === 0 ? styles.nut : styles.positionMarker} />
-
-      <View style={styles.fretArea}>
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {order.map((stringIndex, colIdx) => (
-            <View
-              key={stringIndex}
-              style={[styles.stringLine, { left: `${((colIdx + 0.5) / 6) * 100}%` }]}
-            />
-          ))}
-          {[1, 2, 3].map((k) => (
-            <View key={k} style={[styles.fretLine, { top: `${(k / FRET_COUNT) * 100}%` }]} />
-          ))}
-        </View>
-
-        <View style={styles.fretGutter} pointerEvents="none">
-          {[1, 2, 3, 4].map((row) => (
-            <Text
-              key={row}
-              style={[styles.fretLabel, { top: `${((row - 0.5) / FRET_COUNT) * 100}%` }]}
-            >
-              {baseFret + row}
-            </Text>
-          ))}
-        </View>
-
-        <View style={[StyleSheet.absoluteFill, styles.fretRows]}>
-          {[1, 2, 3, 4].map((row) => {
-            const actualFret = baseFret + row;
-            return (
-              <View key={row} style={styles.fretRow}>
-                {order.map((stringIndex) => {
-                  const state = fretboard[stringIndex];
-                  const selected = state.type === 'fret' && state.fret === actualFret;
-                  const label = selected
-                    ? degreesByPitchClass?.[(STANDARD_TUNING[stringIndex] + actualFret) % 12]
-                    : undefined;
-                  return (
-                    <Pressable
-                      key={stringIndex}
-                      testID={`fret-${row}-${stringIndex}`}
-                      style={styles.fretCell}
-                      onPress={() => handleFretPress(stringIndex, actualFret)}
-                      hitSlop={4}
-                    >
-                      {selected ? <FingerDot label={label} /> : <View style={styles.fretCellHint} />}
-                    </Pressable>
-                  );
-                })}
+      {width > 0 && (
+        <ScrollView
+          ref={scrollRef}
+          style={{ height: fretAreaHeight }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.nut} />
+          {Array.from({ length: TOTAL_FRETS }, (_, i) => i + 1).map((fret) => (
+            <View key={fret} style={[styles.fretRow, { height: rowHeight }]}>
+              <View style={styles.gutter}>
+                <Text style={styles.fretLabel}>{fret}</Text>
               </View>
-            );
-          })}
-        </View>
-      </View>
+              {order.map((stringIndex) => {
+                const state = fretboard[stringIndex];
+                const selected = state.type === 'fret' && state.fret === fret;
+                const label = selected
+                  ? degreesByPitchClass?.[(STANDARD_TUNING[stringIndex] + fret) % 12]
+                  : undefined;
+                return (
+                  <Pressable
+                    key={stringIndex}
+                    testID={`fret-${fret}-${stringIndex}`}
+                    style={styles.fretCell}
+                    onPress={() => handleFretPress(stringIndex, fret)}
+                    hitSlop={4}
+                  >
+                    <View style={styles.stringSegment} />
+                    {selected ? <FingerDot label={label} /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -145,7 +143,17 @@ const styles = StyleSheet.create({
   },
   openRow: {
     flexDirection: 'row',
-    height: 40,
+    height: OPEN_ROW_HEIGHT,
+  },
+  gutter: {
+    width: GUTTER_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fretLabel: {
+    ...typography.label,
+    fontSize: 12,
+    color: colors.textTertiary,
   },
   openCell: {
     flex: 1,
@@ -183,61 +191,24 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.textPrimary,
-    marginHorizontal: 2,
-  },
-  positionMarker: {
-    height: StyleSheet.hairlineWidth * 2,
-    marginHorizontal: 2,
-    backgroundColor: colors.hairline,
-  },
-  fretArea: {
-    aspectRatio: FRET_AREA_ASPECT_RATIO,
-    marginTop: 2,
-  },
-  stringLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: StyleSheet.hairlineWidth * 2,
-    backgroundColor: colors.hairline,
-  },
-  fretLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth * 2,
-    backgroundColor: colors.hairline,
-  },
-  fretGutter: {
-    position: 'absolute',
-    left: -22,
-    top: 0,
-    bottom: 0,
-    width: 18,
-  },
-  fretLabel: {
-    ...typography.label,
-    position: 'absolute',
-    fontSize: 12,
-    color: colors.textTertiary,
-    transform: [{ translateY: -7 }],
-  },
-  fretRows: {
-    flexDirection: 'column',
+    marginHorizontal: 2 + GUTTER_WIDTH,
   },
   fretRow: {
-    flex: 1,
     flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth * 2,
+    borderBottomColor: colors.hairline,
   },
   fretCell: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fretCellHint: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: 'transparent',
+  stringSegment: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    width: StyleSheet.hairlineWidth * 2,
+    backgroundColor: colors.hairline,
   },
 });

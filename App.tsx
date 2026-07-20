@@ -8,7 +8,7 @@ import ChordPicker from './src/components/ChordPicker';
 import Fretboard, { FRET_AREA_ASPECT_RATIO, HEADER_HEIGHT } from './src/components/Fretboard';
 import PositionNav from './src/components/PositionNav';
 import { identifyChords } from './src/engine/chordEngine';
-import { createEmptyFretboard, FretboardState, StringState } from './src/engine/types';
+import { createEmptyFretboard, FretboardState, getEffectiveFretboard, StringState } from './src/engine/types';
 import { Voicing } from './src/engine/voicing';
 import { colors, spacing } from './src/theme/theme';
 
@@ -22,8 +22,9 @@ export default function App() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pickerResetKey, setPickerResetKey] = useState(0);
 
-  const matches = useMemo(() => identifyChords(fretboard), [fretboard]);
   const hasInput = fretboard.some((s) => s.type !== 'none');
+  const effectiveFretboard = useMemo(() => getEffectiveFretboard(fretboard), [fretboard]);
+  const matches = useMemo(() => identifyChords(effectiveFretboard), [effectiveFretboard]);
   const selected = matches[Math.min(selectedIndex, matches.length - 1)];
 
   // Whenever the note selection changes, the previous alternate pick no
@@ -84,7 +85,7 @@ export default function App() {
           {boardWidth > 0 && (
             <View style={{ width: boardWidth }}>
               <Fretboard
-                fretboard={fretboard}
+                fretboard={effectiveFretboard}
                 onChangeString={handleChangeString}
                 leftHanded={leftHanded}
                 degreesByPitchClass={selected?.degreesByPitchClass}
