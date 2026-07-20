@@ -6,6 +6,7 @@ import BottomBar from './src/components/BottomBar';
 import ChordDisplay from './src/components/ChordDisplay';
 import ChordPicker from './src/components/ChordPicker';
 import Fretboard, { FRET_AREA_ASPECT_RATIO, HEADER_HEIGHT } from './src/components/Fretboard';
+import PositionNav from './src/components/PositionNav';
 import { identifyChords } from './src/engine/chordEngine';
 import { createEmptyFretboard, FretboardState, StringState } from './src/engine/types';
 import { Voicing } from './src/engine/voicing';
@@ -76,6 +77,8 @@ export default function App() {
             onSelectIndex={setSelectedIndex}
           />
         </View>
+
+        <PositionNav activeChord={selected} baseFret={baseFret} onSelectVoicing={handleApplyVoicing} />
 
         <View style={styles.middle} onLayout={handleMiddleLayout}>
           {boardWidth > 0 && (

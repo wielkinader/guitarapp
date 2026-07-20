@@ -1,7 +1,7 @@
 import { STANDARD_TUNING } from '../data/chordFormulas';
 import { createEmptyFretboard, FretboardState } from './types';
 
-const MAX_BASE_FRET = 9;
+const MAX_BASE_FRET = 12; // a full octave up the neck — shapes repeat past this
 const STRING_COUNT = 6;
 
 export interface Voicing {
@@ -32,14 +32,57 @@ export function findVoicing(
   const wantedOptional = new Set(optional.map((iv) => (root + iv) % 12));
 
   for (let baseFret = 0; baseFret <= MAX_BASE_FRET; baseFret++) {
-    const fretOptions = fretOptionsFor(baseFret);
+    const fretboard = findVoicingAtRoot(baseFret, root, wantedRequired, wantedOptional, tuning);
+    if (fretboard) return { fretboard, baseFret };
+  }
+  return null;
+}
 
-    for (let bassString = 0; bassString < STRING_COUNT; bassString++) {
-      for (const f of fretOptions) {
-        if ((tuning[bassString] + f) % 12 !== root) continue;
-        const fretboard = buildFromBass(bassString, f, fretOptions, tuning, wantedRequired, wantedOptional);
-        if (fretboard) return { fretboard, baseFret };
-      }
+/**
+ * Same chord, every playable position up the neck — for stepping through
+ * "the same chord, but higher up" with next/previous controls.
+ */
+export function findVoicingsAcrossNeck(
+  root: number,
+  required: number[],
+  optional: number[],
+  tuning: number[] = STANDARD_TUNING
+): Voicing[] {
+  const wantedRequired = new Set(required.map((iv) => (root + iv) % 12));
+  const wantedOptional = new Set(optional.map((iv) => (root + iv) % 12));
+
+  const voicings: Voicing[] = [];
+  let lastShape = '';
+  for (let baseFret = 0; baseFret <= MAX_BASE_FRET; baseFret++) {
+    const fretboard = findVoicingAtRoot(baseFret, root, wantedRequired, wantedOptional, tuning);
+    if (!fretboard) continue;
+    // Adjacent windows overlap, so the same actual fret assignment can
+    // surface at consecutive baseFret values — keep the later (tighter,
+    // less padding above the notes) one instead of showing it twice.
+    const shape = fretboard.map((s) => (s.type === 'fret' ? s.fret : s.type)).join(',');
+    if (shape === lastShape) {
+      voicings[voicings.length - 1] = { fretboard, baseFret };
+    } else {
+      voicings.push({ fretboard, baseFret });
+    }
+    lastShape = shape;
+  }
+  return voicings;
+}
+
+function findVoicingAtRoot(
+  baseFret: number,
+  root: number,
+  wantedRequired: Set<number>,
+  wantedOptional: Set<number>,
+  tuning: number[]
+): FretboardState | null {
+  const fretOptions = fretOptionsFor(baseFret);
+  for (let bassString = 0; bassString < STRING_COUNT; bassString++) {
+    for (const f of fretOptions) {
+      if ((tuning[bassString] + f) % 12 !== root) continue;
+      const fretboard = buildFromBass(bassString, f, fretOptions, tuning, wantedRequired, wantedOptional);
+      if (fretboard) return fretboard;
     }
   }
   return null;
