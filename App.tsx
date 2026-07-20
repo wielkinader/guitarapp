@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import BottomBar from './src/components/BottomBar';
@@ -15,9 +15,18 @@ export default function App() {
   const [fretboard, setFretboard] = useState<FretboardState>(createEmptyFretboard());
   const [leftHanded, setLeftHanded] = useState(false);
   const [boardWidth, setBoardWidth] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   const matches = useMemo(() => identifyChords(fretboard), [fretboard]);
   const hasInput = fretboard.some((s) => s.type !== 'none');
+  const selected = matches[Math.min(selectedIndex, matches.length - 1)];
+
+  // Whenever the note selection changes, the previous alternate pick no
+  // longer applies — snap back to the best match.
+  const signature = matches.map((m) => m.name).join('|');
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [signature]);
 
   const handleChangeString = (index: number, next: StringState) => {
     setFretboard((prev) => {
@@ -46,7 +55,11 @@ export default function App() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <StatusBar style="light" />
         <View style={styles.top}>
-          <ChordDisplay matches={matches} />
+          <ChordDisplay
+            matches={matches}
+            selectedIndex={selectedIndex}
+            onSelectIndex={setSelectedIndex}
+          />
         </View>
 
         <View style={styles.middle} onLayout={handleMiddleLayout}>
@@ -56,6 +69,7 @@ export default function App() {
                 fretboard={fretboard}
                 onChangeString={handleChangeString}
                 leftHanded={leftHanded}
+                degreesByPitchClass={selected?.degreesByPitchClass}
               />
             </View>
           )}

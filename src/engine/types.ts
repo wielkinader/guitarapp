@@ -15,6 +15,8 @@ export interface ChordMatch {
   /** Set when the sounding bass note differs from the chord root. */
   bassName?: string;
   intervalNames: string[];
+  /** Short scale-degree token ("1", "b3", "9", "#11"...) keyed by pitch class, for labeling fretboard dots. */
+  degreesByPitchClass: Record<number, string>;
   score: number;
 }
 

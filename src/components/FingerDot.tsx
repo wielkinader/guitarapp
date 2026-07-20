@@ -1,8 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet } from 'react-native';
-import { colors } from '../theme/theme';
+import { Animated, StyleSheet, Text } from 'react-native';
+import { colors, fontFamily } from '../theme/theme';
 
-export default function FingerDot() {
+interface Props {
+  label?: string;
+}
+
+export default function FingerDot({ label }: Props) {
   const scale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -14,7 +18,11 @@ export default function FingerDot() {
     }).start();
   }, [scale]);
 
-  return <Animated.View style={[styles.dot, { transform: [{ scale }] }]} />;
+  return (
+    <Animated.View style={[styles.dot, { transform: [{ scale }] }]}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -23,5 +31,13 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 999,
     backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontFamily,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.background,
   },
 });

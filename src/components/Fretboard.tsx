@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { STANDARD_TUNING } from '../data/chordFormulas';
 import { FretboardState, StringState } from '../engine/types';
-import { colors, typography } from '../theme/theme';
+import { colors, fontFamily, typography } from '../theme/theme';
 import FingerDot from './FingerDot';
 
 const FRET_COUNT = 4;
@@ -14,6 +15,8 @@ interface Props {
   fretboard: FretboardState;
   onChangeString: (index: number, next: StringState) => void;
   leftHanded: boolean;
+  /** Pitch class -> short degree token ("1", "b7", "9"...), from the selected chord match. */
+  degreesByPitchClass?: Record<number, string>;
 }
 
 function cycleOpenMute(current: StringState): StringState {
@@ -22,7 +25,12 @@ function cycleOpenMute(current: StringState): StringState {
   return { type: 'none' };
 }
 
-export default function Fretboard({ fretboard, onChangeString, leftHanded }: Props) {
+export default function Fretboard({
+  fretboard,
+  onChangeString,
+  leftHanded,
+  degreesByPitchClass,
+}: Props) {
   const order = leftHanded ? [5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5];
 
   const handleOpenMutePress = (stringIndex: number) => {
@@ -38,17 +46,22 @@ export default function Fretboard({ fretboard, onChangeString, leftHanded }: Pro
   return (
     <View style={styles.container}>
       <View style={styles.openRow}>
-        {order.map((stringIndex) => (
-          <Pressable
-            key={stringIndex}
-            testID={`open-mute-${stringIndex}`}
-            style={styles.openCell}
-            onPress={() => handleOpenMutePress(stringIndex)}
-            hitSlop={8}
-          >
-            <OpenMuteIndicator state={fretboard[stringIndex]} />
-          </Pressable>
-        ))}
+        {order.map((stringIndex) => {
+          const state = fretboard[stringIndex];
+          const label =
+            state.type === 'open' ? degreesByPitchClass?.[STANDARD_TUNING[stringIndex]] : undefined;
+          return (
+            <Pressable
+              key={stringIndex}
+              testID={`open-mute-${stringIndex}`}
+              style={styles.openCell}
+              onPress={() => handleOpenMutePress(stringIndex)}
+              hitSlop={8}
+            >
+              <OpenMuteIndicator state={state} label={label} />
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={styles.nut} />
@@ -83,6 +96,9 @@ export default function Fretboard({ fretboard, onChangeString, leftHanded }: Pro
               {order.map((stringIndex) => {
                 const state = fretboard[stringIndex];
                 const selected = state.type === 'fret' && state.fret === fret;
+                const label = selected
+                  ? degreesByPitchClass?.[(STANDARD_TUNING[stringIndex] + fret) % 12]
+                  : undefined;
                 return (
                   <Pressable
                     key={stringIndex}
@@ -91,7 +107,7 @@ export default function Fretboard({ fretboard, onChangeString, leftHanded }: Pro
                     onPress={() => handleFretPress(stringIndex, fret)}
                     hitSlop={4}
                   >
-                    {selected ? <FingerDot /> : <View style={styles.fretCellHint} />}
+                    {selected ? <FingerDot label={label} /> : <View style={styles.fretCellHint} />}
                   </Pressable>
                 );
               })}
@@ -103,9 +119,13 @@ export default function Fretboard({ fretboard, onChangeString, leftHanded }: Pro
   );
 }
 
-function OpenMuteIndicator({ state }: { state: StringState }) {
+function OpenMuteIndicator({ state, label }: { state: StringState; label?: string }) {
   if (state.type === 'open') {
-    return <View style={styles.openRing} />;
+    return (
+      <View style={styles.openRing}>
+        {label ? <Text style={styles.openRingLabel}>{label}</Text> : null}
+      </View>
+    );
   }
   if (state.type === 'muted') {
     return <Text style={styles.muteMark}>×</Text>;
@@ -132,6 +152,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 2,
     borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  openRingLabel: {
+    fontFamily,
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.accent,
   },
   openPlaceholder: {
     width: 8,
