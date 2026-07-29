@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import BottomBar from './src/components/BottomBar';
@@ -7,8 +7,15 @@ import ChordDisplay from './src/components/ChordDisplay';
 import ChordPicker from './src/components/ChordPicker';
 import Fretboard, { FRET_AREA_ASPECT_RATIO, HEADER_HEIGHT } from './src/components/Fretboard';
 import PositionNav from './src/components/PositionNav';
+import ProgressionStrip from './src/components/ProgressionStrip';
 import { identifyChords } from './src/engine/chordEngine';
-import { createEmptyFretboard, FretboardState, getEffectiveFretboard, StringState } from './src/engine/types';
+import {
+  createEmptyFretboard,
+  FretboardState,
+  getEffectiveFretboard,
+  ProgressionEntry,
+  StringState,
+} from './src/engine/types';
 import { Voicing } from './src/engine/voicing';
 import { colors, spacing } from './src/theme/theme';
 
@@ -21,6 +28,8 @@ export default function App() {
   const [boardWidth, setBoardWidth] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pickerResetKey, setPickerResetKey] = useState(0);
+  const [progression, setProgression] = useState<ProgressionEntry[]>([]);
+  const nextProgressionId = useRef(0);
 
   const hasInput = fretboard.some((s) => s.type !== 'none');
   const effectiveFretboard = useMemo(() => getEffectiveFretboard(fretboard), [fretboard]);
@@ -51,6 +60,24 @@ export default function App() {
   const handleApplyVoicing = (voicing: Voicing) => {
     setFretboard(voicing.fretboard);
     setBaseFret(voicing.baseFret);
+  };
+
+  const handleSaveToProgression = () => {
+    if (!selected) return;
+    nextProgressionId.current += 1;
+    setProgression((prev) => [
+      ...prev,
+      { id: String(nextProgressionId.current), fretboard, baseFret, name: selected.name },
+    ]);
+  };
+
+  const handleSelectProgressionEntry = (entry: ProgressionEntry) => {
+    setFretboard(entry.fretboard);
+    setBaseFret(entry.baseFret);
+  };
+
+  const handleRemoveProgressionEntry = (id: string) => {
+    setProgression((prev) => prev.filter((entry) => entry.id !== id));
   };
 
   const handleMiddleLayout = (e: LayoutChangeEvent) => {
@@ -95,10 +122,18 @@ export default function App() {
           )}
         </View>
 
+        <ProgressionStrip
+          entries={progression}
+          onSelect={handleSelectProgressionEntry}
+          onRemove={handleRemoveProgressionEntry}
+        />
+
         <View style={styles.bottom}>
           <BottomBar
             onReset={handleReset}
             resetDisabled={!hasInput}
+            onSave={handleSaveToProgression}
+            saveDisabled={!selected}
             leftHanded={leftHanded}
             onToggleLeftHanded={() => setLeftHanded((v) => !v)}
           />

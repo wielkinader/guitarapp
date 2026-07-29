@@ -7,6 +7,8 @@ interface Props {
   leftHanded: boolean;
   onToggleLeftHanded: () => void;
   resetDisabled: boolean;
+  onSave: () => void;
+  saveDisabled: boolean;
 }
 
 export default function BottomBar({
@@ -14,6 +16,8 @@ export default function BottomBar({
   leftHanded,
   onToggleLeftHanded,
   resetDisabled,
+  onSave,
+  saveDisabled,
 }: Props) {
   return (
     <View style={styles.container}>
@@ -24,6 +28,15 @@ export default function BottomBar({
         hitSlop={12}
       >
         <Text style={[styles.resetLabel, resetDisabled && styles.resetLabelDisabled]}>Reset</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={onSave}
+        disabled={saveDisabled}
+        style={[styles.textButton, saveDisabled && styles.textButtonDisabled]}
+        hitSlop={12}
+      >
+        <Text style={[styles.saveLabel, saveDisabled && styles.resetLabelDisabled]}>+ Save</Text>
       </Pressable>
 
       <Pressable
@@ -71,6 +84,11 @@ const styles = StyleSheet.create({
   },
   resetLabelDisabled: {
     color: colors.textTertiary,
+  },
+  saveLabel: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.accent,
   },
   toggle: {
     flexDirection: 'row',

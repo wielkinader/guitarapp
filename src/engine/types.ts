@@ -20,6 +20,14 @@ export interface ChordMatch {
   score: number;
 }
 
+/** A chord snapshotted into a progression — enough to redraw it and reload it onto the board. */
+export interface ProgressionEntry {
+  id: string;
+  fretboard: FretboardState;
+  baseFret: number;
+  name: string;
+}
+
 export const EMPTY_STRING_STATE = (): StringState => ({ type: 'none' });
 
 export const createEmptyFretboard = (): FretboardState =>
